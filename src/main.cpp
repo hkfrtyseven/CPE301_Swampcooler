@@ -15,38 +15,39 @@ volatile unsigned int * my_ADC_DATA = (unsigned int *) 0x78;
 
 volatile unsigned char* port_b = (unsigned char*) 0x25; 
 volatile unsigned char* ddr_b  = (unsigned char*) 0x24; 
+volatile unsigned char* pin_k  = (unsigned char*) 0x106;
+volatile unsigned char* ddr_k  = (unsigned char*) 0x107; 
+volatile unsigned char* port_k = (unsigned char*) 0x108;
+
 
 int adc_id = 0;
 volatile unsigned int historyValue;
 const int threshold = 200;
 char printBuffer[128];
+bool standby = false;
 
 ISR(TIMER0_COMPA_vect)
 {
-  // int currentValue = analogRead(adc_id);
   int currentValue = adc_read(adc_id);
-  // int historyValue = adc_read(adc_id);
   historyValue = currentValue;
+
   if(currentValue < threshold)
   {
-    *port_b |= 0b00100000;
-    // PORTB |= 0x20; // 0b00100000 Turn on red LED
-    *port_b &= 0b10111111;
-    // PORTB &= 0xBF; // 0b10111111 Turn off green LED
+    *port_b |= 0b00100000; // Turn on red LED
+    *port_b &= 0b10111111; // Turn off green LED
   }
   else
   {
-    *port_b &= 0b11011111;
-    // PORTB &= 0xDF; // 0b11011111 Turn off red LED
-    *port_b |= 0b01000000;
-    // PORTB |= 0x40; // 0b01000000 Turn on green LED
+    *port_b &= 0b11011111; // Turn off red LED
+    *port_b |= 0b01000000; // Turn on green LED
   }
 }
 
 void setup() {
   // put your setup code here, to run once:
-  *ddr_b |= 0b01100000;
-  // adc_init(); // Initialize andaloc-to-digital conversion
+  *ddr_b |= 0b01110000;
+  *ddr_k &= 0b01111111;
+  *port_k |= 0b10000000;
   Serial.begin(9600);
   
   OCR0A = 255;
@@ -58,7 +59,29 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
-
+  if(!(*pin_k & 0b10000000))
+  {
+    for (volatile unsigned int i = 0; i < 50; i++); // Wait a moment and re-check to ensure input was detected and not noise
+      if(!(*pin_k & 0b10000000))
+      {
+        standby = !standby;
+        if(standby)
+          {
+            cli();
+          }
+          else
+          {
+            *port_b &= 0b11101111;
+            sei();
+          }
+          while(!(*pin_k & 0b10000000));
+      }
+  }
+  if(standby)
+  {
+    *port_b |= 0b00010000;
+    *port_b &= 0b00011111;
+  }
 }
 
 unsigned int adc_read(unsigned char adc_channel_num)
