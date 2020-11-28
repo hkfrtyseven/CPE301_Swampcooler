@@ -15,9 +15,12 @@ volatile unsigned int * my_ADC_DATA = (unsigned int *) 0x78;
 
 volatile unsigned char* port_b = (unsigned char*) 0x25; 
 volatile unsigned char* ddr_b  = (unsigned char*) 0x24; 
+volatile unsigned char* ddr_h = (unsigned char*) 0x101;
+volatile unsigned char* port_h = (unsigned char*) 0x102;
 volatile unsigned char* pin_k  = (unsigned char*) 0x106;
 volatile unsigned char* ddr_k  = (unsigned char*) 0x107; 
 volatile unsigned char* port_k = (unsigned char*) 0x108;
+
 
 
 int adc_id = 0;
@@ -25,6 +28,8 @@ volatile unsigned int historyValue;
 const int threshold = 200;
 char printBuffer[128];
 bool standby = false;
+bool waterok = false;
+bool tempabovelevel = false;
 
 ISR(TIMER0_COMPA_vect)
 {
@@ -33,19 +38,22 @@ ISR(TIMER0_COMPA_vect)
 
   if(currentValue < threshold)
   {
-    *port_b |= 0b00100000; // Turn on red LED
-    *port_b &= 0b10111111; // Turn off green LED
+    // *port_b |= 0b00100000; // Turn on red LED
+    // *port_b &= 0b10111111; // Turn off green LED
+    waterok = false;
   }
   else
   {
-    *port_b &= 0b11011111; // Turn off red LED
-    *port_b |= 0b01000000; // Turn on green LED
+    // *port_b &= 0b11011111; // Turn off red LED
+    // *port_b |= 0b01000000; // Turn on green LED
+    waterok = true;
   }
 }
 
 void setup() {
   // put your setup code here, to run once:
-  *ddr_b |= 0b01110000;
+  *ddr_b |= 0b01111000;
+  *ddr_h |= 0b01000000;
   *ddr_k &= 0b01111111;
   *port_k |= 0b10000000;
   Serial.begin(9600);
@@ -77,11 +85,36 @@ void loop() {
           while(!(*pin_k & 0b10000000));
       }
   }
+
   if(standby)
   {
-    *port_b |= 0b00010000;
-    *port_b &= 0b00011111;
+    *port_b |= 0b00010000; // Turn on yellow LED
+    *port_b &= 0b00011111; // Turn off others
+    *port_h &= 0b10111111;
   }
+  else
+  {
+    if(!waterok)
+    {
+    *port_b |= 0b00100000; // Turn on red LED
+    *port_b &= 0b10111111; // Turn off green LED
+    *port_h &= 0b10111111; // Turn off blue LED
+    }
+    else if(waterok)
+    {
+      *port_b &= 0b11011111; // Turn off red LED
+      *port_b |= 0b01000000; // Turn on green LED
+
+      if(tempabovelevel)
+      {
+        *port_h |= 0b01000000;
+      }
+    }
+  }
+
+
+  
+  // Serial.println(adc_read(1));
 }
 
 unsigned int adc_read(unsigned char adc_channel_num)

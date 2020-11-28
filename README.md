@@ -11,10 +11,10 @@ PB5 - Red LED
 
 PB4 - Yellow LED
 
-5V - Water Sensor +
-
-GND - Water Sensor -
+PB3 - Blue LED - Not yet used
 
 A0 - Water Sensor S
+
+A1 - Temp Sensor S - Not yet implemented
 
 PK7 - Standby button
