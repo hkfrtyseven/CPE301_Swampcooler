@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <DHTxx.h>
 
 #define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
 
@@ -6,7 +7,12 @@ void setup();
 void loop();
 void adc_init();
 unsigned int adc_read(unsigned char adc_channel_num);
+void DelayTimer(long int DelayValue);
+void DHT11();
+void convertToF();
 
+dht DHT;
+#define DHT11_PIN 7
 
 volatile unsigned char * my_ADMUX = (unsigned char *) 0x7C;   // ADC Registers
 volatile unsigned char * my_ADCSRB = (unsigned char *) 0x7B;
@@ -23,31 +29,28 @@ volatile unsigned char* port_k = (unsigned char*) 0x108;
 
 
 
-int adc_id = 0;
+int watersensor_id = 0;
 volatile unsigned int historyValue;
 const int threshold = 200;
 char printBuffer[128];
+int DHT11_Pin = 7; // DHT11 Data Pin
+int Humidity = 0; 
+int Temp = 0;
+int TempComma = 0;
+float Tempf = 0;
+bool DHTError = false; // Checksum Error
+
 bool standby = false;
 bool waterok = false;
 bool tempabovelevel = false;
 
-ISR(TIMER0_COMPA_vect)
+ISR(TIMER3_COMPA_vect)
 {
-  int currentValue = adc_read(adc_id);
+  int currentValue = adc_read(watersensor_id);
   historyValue = currentValue;
 
-  if(currentValue < threshold)
-  {
-    // *port_b |= 0b00100000; // Turn on red LED
-    // *port_b &= 0b10111111; // Turn off green LED
-    waterok = false;
-  }
-  else
-  {
-    // *port_b &= 0b11011111; // Turn off red LED
-    // *port_b |= 0b01000000; // Turn on green LED
-    waterok = true;
-  }
+  if(currentValue < threshold) { waterok = false; }
+  else { waterok = true; }
 }
 
 void setup() {
@@ -57,12 +60,20 @@ void setup() {
   *ddr_k &= 0b01111111;
   *port_k |= 0b10000000;
   Serial.begin(9600);
+
+
+  // OCR0A = 255;
+  // TCCR0A = (1 << WGM01); // Compare (CTC) mode, internal clk, no prescaler
+  // TCCR0B = 0x01;
+  // TIMSK0 = (1 << OCIE0A); // enable timer0, compare match int
+  // sei();                  // enable interrupts
   
-  OCR0A = 255;
-  TCCR0A = (1 << WGM01); // Compare (CTC) mode, internal clk, no prescaler
-  TCCR0B = 0x01;
-  TIMSK0 = (1 << OCIE0A); // enable timer0, compare match int
+  OCR3A = 255;
+  TCCR3A = (1 << WGM01);  // Compare (CTC) mode, internal clk, no prescaler
+  TCCR3B = 0x03;
+  TIMSK3 = (1 << OCIE0A); // enable timer0, compare match int
   sei();                  // enable interrupts
+
 }
 
 void loop() {
@@ -112,9 +123,15 @@ void loop() {
     }
   }
 
-
-  
-  // Serial.println(adc_read(1));
+  int chk = DHT.read11(DHT11_PIN);
+  if(DHT.temperature > 0)
+  {
+    int temp = (DHT.temperature * 9/5) + 32;
+    Serial.print(temp);
+    Serial.print("°F\t");
+    Serial.print(DHT.humidity, 0);
+    Serial.println("%");
+  }
 }
 
 unsigned int adc_read(unsigned char adc_channel_num)
