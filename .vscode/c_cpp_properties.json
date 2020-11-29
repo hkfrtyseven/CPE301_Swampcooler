@@ -8,7 +8,9 @@
             "includePath": [
                 "/home/phantom/Documents/school/Semester 5/CPE 301/code/swampcooler/include",
                 "/home/phantom/Documents/school/Semester 5/CPE 301/code/swampcooler/src",
+                "/home/phantom/Documents/school/Semester 5/CPE 301/code/swampcooler/lib/LiquidCrystal",
                 "/home/phantom/Documents/school/Semester 5/CPE 301/code/swampcooler/lib/DHTxx",
+                "/home/phantom/Documents/school/Semester 5/CPE 301/code/swampcooler/lib/DHTLib",
                 "/home/phantom/.platformio/packages/framework-arduino-avr/cores/arduino",
                 "/home/phantom/.platformio/packages/framework-arduino-avr/variants/mega",
                 "/home/phantom/.platformio/packages/framework-arduino-avr/libraries/EEPROM/src",
@@ -24,7 +26,9 @@
                 "path": [
                     "/home/phantom/Documents/school/Semester 5/CPE 301/code/swampcooler/include",
                     "/home/phantom/Documents/school/Semester 5/CPE 301/code/swampcooler/src",
+                    "/home/phantom/Documents/school/Semester 5/CPE 301/code/swampcooler/lib/LiquidCrystal",
                     "/home/phantom/Documents/school/Semester 5/CPE 301/code/swampcooler/lib/DHTxx",
+                    "/home/phantom/Documents/school/Semester 5/CPE 301/code/swampcooler/lib/DHTLib",
                     "/home/phantom/.platformio/packages/framework-arduino-avr/cores/arduino",
                     "/home/phantom/.platformio/packages/framework-arduino-avr/variants/mega",
                     "/home/phantom/.platformio/packages/framework-arduino-avr/libraries/EEPROM/src",

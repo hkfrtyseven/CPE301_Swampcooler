@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <DHTxx.h>
+#include <LiquidCrystal.h>
 
 #define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
 
@@ -13,6 +14,7 @@ void convertToF();
 
 dht DHT;
 #define DHT11_PIN 7
+LiquidCrystal lcd(6,5,4,3,8,2);
 
 volatile unsigned char * my_ADMUX = (unsigned char *) 0x7C;   // ADC Registers
 volatile unsigned char * my_ADCSRB = (unsigned char *) 0x7B;
@@ -31,14 +33,9 @@ volatile unsigned char* port_k = (unsigned char*) 0x108;
 
 int watersensor_id = 0;
 volatile unsigned int historyValue;
-const int threshold = 200;
-char printBuffer[128];
-int DHT11_Pin = 7; // DHT11 Data Pin
-int Humidity = 0; 
+const int waterThreshold = 200;
+// char printBuffer[128];
 int Temp = 0;
-int TempComma = 0;
-float Tempf = 0;
-bool DHTError = false; // Checksum Error
 
 bool standby = false;
 bool waterok = false;
@@ -49,8 +46,11 @@ ISR(TIMER3_COMPA_vect)
   int currentValue = adc_read(watersensor_id);
   historyValue = currentValue;
 
-  if(currentValue < threshold) { waterok = false; }
+  if(currentValue < waterThreshold) { waterok = false; }
   else { waterok = true; }
+
+  if(Temp > 69) { tempabovelevel = true; }
+  else { tempabovelevel = false; }
 }
 
 void setup() {
@@ -60,6 +60,10 @@ void setup() {
   *ddr_k &= 0b01111111;
   *port_k |= 0b10000000;
   Serial.begin(9600);
+  lcd.begin(16, 2);
+  lcd.print("Reading");
+  lcd.setCursor(0,2);
+  lcd.print("Climate");
 
 
   // OCR0A = 255;
@@ -119,6 +123,7 @@ void loop() {
       if(tempabovelevel)
       {
         *port_h |= 0b01000000;
+        // Turn on fan and make sure vent is in one position or the other
       }
     }
   }
@@ -126,11 +131,20 @@ void loop() {
   int chk = DHT.read11(DHT11_PIN);
   if(DHT.temperature > 0)
   {
-    int temp = (DHT.temperature * 9/5) + 32;
-    Serial.print(temp);
+    Temp = (DHT.temperature * 9/5) + 32;
+    Serial.print(Temp);
     Serial.print("°F\t");
     Serial.print(DHT.humidity, 0);
     Serial.println("%");
+
+    lcd.clear();
+    lcd.print("Temp: ");
+    lcd.print(Temp);
+    lcd.print(" F");
+    lcd.setCursor(0,2);
+    lcd.print("Humidity: ");
+    lcd.print(DHT.humidity, 0);
+    lcd.print("%");
   }
 }
 
