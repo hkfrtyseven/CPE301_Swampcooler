@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <DHTxx.h>
 #include <LiquidCrystal.h>
+#include <TimeLib.h>
 
 #define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
 
@@ -11,17 +12,25 @@ unsigned int adc_read(unsigned char adc_channel_num);
 void DelayTimer(long int DelayValue);
 void DHT11();
 void convertToF();
+time_t requestSync();
+void processSyncMessage();
+void printDigits(int digits);
+void logTime(bool b);
+void displayClimate();
+void displayError();
 
 dht DHT;
-#define DHT11_PIN 7
 LiquidCrystal lcd(6,5,4,3,8,2);
+#define DHT11_PIN 7        // Pin that DHT sensor is connected to
+#define TIME_HEADER  "T"   // Header tag for serial time sync message
+#define TIME_REQUEST  7    // ASCII bell character requests a time sync message 
 
 volatile unsigned char * my_ADMUX = (unsigned char *) 0x7C;   // ADC Registers
 volatile unsigned char * my_ADCSRB = (unsigned char *) 0x7B;
 volatile unsigned char * my_ADCSRA = (unsigned char *) 0x7A;
 volatile unsigned int * my_ADC_DATA = (unsigned int *) 0x78;
 
-volatile unsigned char* port_b = (unsigned char*) 0x25; 
+volatile unsigned char* port_b = (unsigned char*) 0x25; // Port Registers
 volatile unsigned char* ddr_b  = (unsigned char*) 0x24; 
 volatile unsigned char* ddr_h = (unsigned char*) 0x101;
 volatile unsigned char* port_h = (unsigned char*) 0x102;
@@ -34,22 +43,31 @@ volatile unsigned char* port_k = (unsigned char*) 0x108;
 int watersensor_id = 0;
 volatile unsigned int historyValue;
 const int waterThreshold = 200;
+const int tempThreshold = 63;
 // char printBuffer[128];
 int Temp = 0;
+int Humidity = 0;
+// int secondOfError = -1;
+// int secondOfRecovery = -1;
 
-bool standby = false;
+bool standby = false; // Status booleans
 bool waterok = false;
 bool tempabovelevel = false;
+bool isFan = false;
+bool newError = false;
+bool newRecovery = false;
 
 ISR(TIMER3_COMPA_vect)
 {
-  int currentValue = adc_read(watersensor_id);
+  int currentValue = adc_read(watersensor_id); // Check water level
   historyValue = currentValue;
 
-  if(currentValue < waterThreshold) { waterok = false; }
+  if((currentValue < waterThreshold) && (waterok == true)) { newError = true; }
+  if(!(currentValue < waterThreshold) && (waterok == false)) { newRecovery = true; Serial.println("New Recovery!"); }
+  if(currentValue < waterThreshold) { waterok = false;}
   else { waterok = true; }
-
-  if(Temp > 69) { tempabovelevel = true; }
+  
+  if(Temp > tempThreshold) { tempabovelevel = true; }
   else { tempabovelevel = false; }
 }
 
@@ -60,6 +78,7 @@ void setup() {
   *ddr_k &= 0b01111111;
   *port_k |= 0b10000000;
   Serial.begin(9600);
+  setSyncProvider(requestSync);  //set function to call when time sync required
   lcd.begin(16, 2);
   lcd.print("Reading");
   lcd.setCursor(0,2);
@@ -77,11 +96,11 @@ void setup() {
   TCCR3B = 0x03;
   TIMSK3 = (1 << OCIE0A); // enable timer0, compare match int
   sei();                  // enable interrupts
-
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
+  if(Serial.available()) { processSyncMessage(); }
   if(!(*pin_k & 0b10000000))
   {
     for (volatile unsigned int i = 0; i < 50; i++); // Wait a moment and re-check to ensure input was detected and not noise
@@ -106,6 +125,11 @@ void loop() {
     *port_b |= 0b00010000; // Turn on yellow LED
     *port_b &= 0b00011111; // Turn off others
     *port_h &= 0b10111111;
+    if(isFan) { logTime(!isFan); }
+    isFan = false;
+
+    // Turn off motor 
+    // 'Close' vent
   }
   else
   {
@@ -114,28 +138,69 @@ void loop() {
     *port_b |= 0b00100000; // Turn on red LED
     *port_b &= 0b10111111; // Turn off green LED
     *port_h &= 0b10111111; // Turn off blue LED
+    if(isFan) { logTime(!isFan); } // If fan was on, send a log saying it was disabled
+    isFan = false;
+    displayError();
+    // Make sure fan is off
+    // 'Close' vent    
     }
     else if(waterok)
     {
       *port_b &= 0b11011111; // Turn off red LED
-      *port_b |= 0b01000000; // Turn on green LED
+      if(newRecovery)
+      {
+        if(DHT.temperature > 0)
+        {
+          Temp = (DHT.temperature * 9/5) + 32;
+          Humidity = DHT.humidity;
+        }
+        
+          lcd.clear();
+          lcd.print("Temp: ");
+          lcd.print(Temp);
+          lcd.print(" F");
+          lcd.setCursor(0,2);
+          lcd.print("Humidity: ");
+          lcd.print(Humidity);
+          lcd.print("%");
+          newRecovery = false;
+      }
+
+      displayClimate();
+      if(!tempabovelevel){ *port_b |= 0b01000000; } // Turn on green LED }
+      
 
       if(tempabovelevel)
       {
-        *port_h |= 0b01000000;
-        // Turn on fan and make sure vent is in one position or the other
+        *port_b &= 0b10111111; // Turn off green LED
+        *port_h |= 0b01000000; // Turn on blue LED
+        if(!isFan) { logTime(true); } // If the fan was not on, send a log saying it was enabled
+        isFan = true;
+        // Turn on fan and put vent in 'active' position
+      }
+      else
+      {
+        *port_h &= 0b10111111; // Turn off blue LED
+        if(isFan) { logTime(!isFan); } // If the fan was on, send a log saying it was disabled
+        isFan =  false;
+
+        // Turn the fan off
+        // Put the vent in 'disabled' or 'inactive' state
       }
     }
   }
+}
 
-  int chk = DHT.read11(DHT11_PIN);
-  if(DHT.temperature > 0)
+void displayClimate()
+{
+  DHT.read11(DHT11_PIN);
+  if(newRecovery)
   {
-    Temp = (DHT.temperature * 9/5) + 32;
-    Serial.print(Temp);
-    Serial.print("°F\t");
-    Serial.print(DHT.humidity, 0);
-    Serial.println("%");
+      if(DHT.temperature > 0)
+      {
+        Temp = (DHT.temperature * 9/5) + 32;
+        Humidity = DHT.humidity;
+      }
 
     lcd.clear();
     lcd.print("Temp: ");
@@ -143,8 +208,39 @@ void loop() {
     lcd.print(" F");
     lcd.setCursor(0,2);
     lcd.print("Humidity: ");
-    lcd.print(DHT.humidity, 0);
+    lcd.print(Humidity);
     lcd.print("%");
+    newRecovery = false;
+  } else if((DHT.temperature > 0) && waterok)
+  {
+    Temp = (DHT.temperature * 9/5) + 32;
+    Humidity = DHT.humidity;
+    lcd.clear();
+    lcd.print("Temp: ");
+    lcd.print(Temp);
+    lcd.print(" F");
+    lcd.setCursor(0,2);
+    lcd.print("Humidity: ");
+    lcd.print(Humidity);
+    lcd.print("%");
+  } else if((Temp == 0) && waterok)
+  {
+    lcd.clear();
+    lcd.print("Reading");
+    lcd.setCursor(0,2);
+    lcd.print("Climate");
+  }
+}
+
+void displayError()
+{
+  if(newError)
+  {
+    lcd.clear();
+    lcd.print("Error!");
+    lcd.setCursor(0,2);
+    lcd.print("Reservior Empty!");
+    newError = false;
   }
 }
 
@@ -175,4 +271,49 @@ unsigned int adc_read(unsigned char adc_channel_num)
 #endif
 
 	return (high << 8) | low;
+}
+
+void printDigits(int digits)
+{
+  // utility function for digital clock display: prints preceding colon and leading 0
+  Serial.print(":");
+  if(digits < 10)
+    Serial.print('0');
+  Serial.print(digits);
+}
+
+time_t requestSync()
+{
+  Serial.write(TIME_REQUEST);  
+  return 0; // the time will be sent later in response to serial mesg
+}
+
+void processSyncMessage() 
+{
+  unsigned long pctime;
+  const unsigned long DEFAULT_TIME = 1357041600; // Jan 1 2013
+
+  if(Serial.find(TIME_HEADER)) {
+     pctime = Serial.parseInt();
+     if( pctime >= DEFAULT_TIME) { // check the integer is a valid time (greater than Jan 1 2013)
+       setTime(pctime); // Sync Arduino clock to the time received on the serial port
+     }
+  }
+}
+
+void logTime(bool b)
+{
+  if(b) { Serial.print("Fan Enabled\t- "); }
+  else { Serial.print("Fan Disabled\t- "); }
+
+  Serial.print(hour());
+  printDigits(minute());
+  printDigits(second());
+  Serial.print(" ");
+  Serial.print(month());
+  Serial.print("/");
+  Serial.print(day());
+  Serial.print("/");
+  Serial.print(year()); 
+  Serial.println(); 
 }

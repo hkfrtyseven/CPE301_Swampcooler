@@ -1,7 +1,9 @@
 # CPE301_Swampcooler
 Implementation of a swamp cooler using Arduino
 
-src/main.cpp
+Code : src/main.cpp
+
+In order to get an accurate time reading, you must run SyncArduinoClock.pde (./lib/Time-master/examples/Processing / SyncArduinoClock) in a program called Processing. It is a java program that sends the current date and time via serial. If time is not synced, it will begin from 00:00:00 1/1/1970.
 
 Arduino Pin Connections : 
 

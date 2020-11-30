@@ -8,6 +8,7 @@
             "includePath": [
                 "/home/phantom/Documents/school/Semester 5/CPE 301/code/swampcooler/include",
                 "/home/phantom/Documents/school/Semester 5/CPE 301/code/swampcooler/src",
+                "/home/phantom/Documents/school/Semester 5/CPE 301/code/swampcooler/lib/Time-master",
                 "/home/phantom/Documents/school/Semester 5/CPE 301/code/swampcooler/lib/LiquidCrystal",
                 "/home/phantom/Documents/school/Semester 5/CPE 301/code/swampcooler/lib/DHTxx",
                 "/home/phantom/Documents/school/Semester 5/CPE 301/code/swampcooler/lib/DHTLib",
@@ -26,6 +27,7 @@
                 "path": [
                     "/home/phantom/Documents/school/Semester 5/CPE 301/code/swampcooler/include",
                     "/home/phantom/Documents/school/Semester 5/CPE 301/code/swampcooler/src",
+                    "/home/phantom/Documents/school/Semester 5/CPE 301/code/swampcooler/lib/Time-master",
                     "/home/phantom/Documents/school/Semester 5/CPE 301/code/swampcooler/lib/LiquidCrystal",
                     "/home/phantom/Documents/school/Semester 5/CPE 301/code/swampcooler/lib/DHTxx",
                     "/home/phantom/Documents/school/Semester 5/CPE 301/code/swampcooler/lib/DHTLib",
