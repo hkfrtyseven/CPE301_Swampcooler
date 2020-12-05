@@ -2,6 +2,7 @@
 #include <DHTxx.h>
 #include <LiquidCrystal.h>
 #include <TimeLib.h>
+#include <ServoTimer2.h>
 
 #define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
 
@@ -41,6 +42,9 @@ volatile unsigned char* port_l = (unsigned char*) 0x10B;
 volatile unsigned char* pin_l = (unsigned char*) 0x109;
 volatile unsigned char* ddr_l = (unsigned char*) 0x10A;
 
+// vent positions
+int vent_open = 0;
+int vent_close = 180;
 int watersensor_id = 0;
 volatile unsigned int historyValue;
 const int waterThreshold = 200;
@@ -50,6 +54,9 @@ int Temp = 0;
 int Humidity = 0;
 // int secondOfError = -1;
 // int secondOfRecovery = -1;
+
+// Name servo
+ServoTimer2 vent_control;
 
 // Status booleans
 bool standby = false;
@@ -83,6 +90,8 @@ void setup() {
   *ddr_l |= 0b00101000;
   // set fans to LOW
   *port_l &= 0b11010111;
+  // initialize servo (vent)
+  vent_control.attach(13);
 
   Serial.begin(9600);
   setSyncProvider(requestSync);  //set function to call when time sync required
@@ -137,6 +146,7 @@ void loop() {
   //  Turn off motor (PL3 to LOW)
   //  *port_l &= 0b11110111;
   //  'Close' vent
+    vent_control.write(vent_close);
   }
   else
   {
@@ -150,7 +160,8 @@ void loop() {
                                          // Turn off fan motor (PL3 to LOW)
     isFan = false;
     displayError();
-    // 'Close' vent    
+    // 'Close' vent
+    vent_control.write(vent_close);    
     }
     else if(waterok)
     {
@@ -186,6 +197,7 @@ void loop() {
                                                // Turn on fan (PL3 to HIGH)
         isFan = true;
         //put vent in 'active' position
+        vent_control.write(vent_open);
       }
       else
       {
@@ -195,6 +207,7 @@ void loop() {
                                              // Turn the fan off (PL3 to LOW)
         isFan =  false;
         // Put the vent in 'disabled' or 'inactive' state
+        vent_control.write(vent_close);
       }
     }
   }

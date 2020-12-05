@@ -32,3 +32,9 @@ PE5 - LCD D5
 PH5 - LCD D6
 
 PE4 - LCD D7
+
+PL3 - Fan (on/off pin)
+
+PL5 - Fan GND (always off pin)
+
+PB7 - Servo (vent)
