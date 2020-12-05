@@ -22,7 +22,7 @@ void displayError();
 dht DHT;
 LiquidCrystal lcd(6,5,4,3,8,2);
 #define DHT11_PIN 7        // Pin that DHT sensor is connected to
-#define TIME_HEADER  "T"   // Header tag for serial time sync message
+#define TIME_HEADER  'T'   // Header tag for serial time sync message
 #define TIME_REQUEST  7    // ASCII bell character requests a time sync message 
 
 volatile unsigned char * my_ADMUX = (unsigned char *) 0x7C;   // ADC Registers
@@ -37,8 +37,9 @@ volatile unsigned char* port_h = (unsigned char*) 0x102;
 volatile unsigned char* pin_k  = (unsigned char*) 0x106;
 volatile unsigned char* ddr_k  = (unsigned char*) 0x107; 
 volatile unsigned char* port_k = (unsigned char*) 0x108;
-
-
+volatile unsigned char* port_l = (unsigned char*) 0x10B;
+volatile unsigned char* pin_l = (unsigned char*) 0x109;
+volatile unsigned char* ddr_l = (unsigned char*) 0x10A;
 
 int watersensor_id = 0;
 volatile unsigned int historyValue;
@@ -50,7 +51,8 @@ int Humidity = 0;
 // int secondOfError = -1;
 // int secondOfRecovery = -1;
 
-bool standby = false; // Status booleans
+// Status booleans
+bool standby = false;
 bool waterok = false;
 bool tempabovelevel = false;
 bool isFan = false;
@@ -77,13 +79,17 @@ void setup() {
   *ddr_h |= 0b01000000;
   *ddr_k &= 0b01111111;
   *port_k |= 0b10000000;
+  // set fan pins to output
+  *ddr_l |= 0b00101000;
+  // set fans to LOW
+  *port_l &= 0b11010111;
+
   Serial.begin(9600);
   setSyncProvider(requestSync);  //set function to call when time sync required
   lcd.begin(16, 2);
   lcd.print("Reading");
   lcd.setCursor(0,2);
   lcd.print("Climate");
-
 
   // OCR0A = 255;
   // TCCR0A = (1 << WGM01); // Compare (CTC) mode, internal clk, no prescaler
@@ -111,25 +117,26 @@ void loop() {
           {
             cli();
           }
-          else
+        else
           {
             *port_b &= 0b11101111;
             sei();
           }
-          while(!(*pin_k & 0b10000000));
+        while(!(*pin_k & 0b10000000));
       }
   }
 
   if(standby)
   {
     *port_b |= 0b00010000; // Turn on yellow LED
-    *port_b &= 0b00011111; // Turn off others
+    *port_b &= 0b10011111; // Turn off others
     *port_h &= 0b10111111;
-    if(isFan) { logTime(!isFan); }
+    if(isFan) { logTime(!isFan);
+                *port_l &= 0b11110111; }  // Turn off fan motor (PL3 to LOW)
     isFan = false;
-
-    // Turn off motor 
-    // 'Close' vent
+  //  Turn off motor (PL3 to LOW)
+  //  *port_l &= 0b11110111;
+  //  'Close' vent
   }
   else
   {
@@ -138,10 +145,11 @@ void loop() {
     *port_b |= 0b00100000; // Turn on red LED
     *port_b &= 0b10111111; // Turn off green LED
     *port_h &= 0b10111111; // Turn off blue LED
-    if(isFan) { logTime(!isFan); } // If fan was on, send a log saying it was disabled
+    if(isFan) { logTime(!isFan);
+                *port_l &= 0b11110111; } // If fan was on, send a log saying it was disabled
+                                         // Turn off fan motor (PL3 to LOW)
     isFan = false;
     displayError();
-    // Make sure fan is off
     // 'Close' vent    
     }
     else if(waterok)
@@ -167,24 +175,25 @@ void loop() {
       }
 
       displayClimate();
-      if(!tempabovelevel){ *port_b |= 0b01000000; } // Turn on green LED }
-      
+      if(!tempabovelevel){ *port_b |= 0b01000000; } // Turn on green LED
 
       if(tempabovelevel)
       {
         *port_b &= 0b10111111; // Turn off green LED
         *port_h |= 0b01000000; // Turn on blue LED
-        if(!isFan) { logTime(true); } // If the fan was not on, send a log saying it was enabled
+        if(!isFan) { logTime(true); 
+                      *port_l |= 0b00001000; } // If the fan was not on, send a log saying it was enabled
+                                               // Turn on fan (PL3 to HIGH)
         isFan = true;
-        // Turn on fan and put vent in 'active' position
+        //put vent in 'active' position
       }
       else
       {
         *port_h &= 0b10111111; // Turn off blue LED
-        if(isFan) { logTime(!isFan); } // If the fan was on, send a log saying it was disabled
+        if(isFan) { logTime(!isFan); 
+                    *port_l &= 0b11110111; } // If the fan was on, send a log saying it was disabled
+                                             // Turn the fan off (PL3 to LOW)
         isFan =  false;
-
-        // Turn the fan off
         // Put the vent in 'disabled' or 'inactive' state
       }
     }
