@@ -44,11 +44,11 @@ volatile unsigned char* ddr_l = (unsigned char*) 0x10A;
 
 // vent positions
 int vent_open = 0;
-int vent_close = 180;
+int vent_close = 90;
 int watersensor_id = 0;
 volatile unsigned int historyValue;
 const int waterThreshold = 200;
-const int tempThreshold = 63;
+const int tempThreshold = 70;
 // char printBuffer[128];
 int Temp = 0;
 int Humidity = 0;
@@ -72,7 +72,7 @@ ISR(TIMER3_COMPA_vect)
   historyValue = currentValue;
 
   if((currentValue < waterThreshold) && (waterok == true)) { newError = true; }
-  if(!(currentValue < waterThreshold) && (waterok == false)) { newRecovery = true; Serial.println("New Recovery!"); }
+  if(!(currentValue < waterThreshold) && (waterok == false)) { newRecovery = true; }
   if(currentValue < waterThreshold) { waterok = false;}
   else { waterok = true; }
   
@@ -91,7 +91,7 @@ void setup() {
   // set fans to LOW
   *port_l &= 0b11010111;
   // initialize servo (vent)
-  vent_control.attach(13);
+  // vent_control.attach(13);
 
   Serial.begin(9600);
   setSyncProvider(requestSync);  //set function to call when time sync required
@@ -252,6 +252,8 @@ void displayClimate()
     lcd.setCursor(0,2);
     lcd.print("Climate");
   }
+  if(DHT.temperature > 0){
+  Serial.print("Temp: "); Serial.println(DHT.temperature); }
 }
 
 void displayError()
