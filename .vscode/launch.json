@@ -12,9 +12,9 @@
             "type": "platformio-debug",
             "request": "launch",
             "name": "PIO Debug",
-            "executable": "/home/phantom/Documents/school/Semester 5/CPE 301/code/swampcooler/.pio/build/megaatmega2560/firmware.elf",
+            "executable": "c:/CPE301/CPE301_Swampcooler/.pio/build/megaatmega2560/firmware.elf",
             "projectEnvName": "megaatmega2560",
-            "toolchainBinDir": "/home/phantom/.platformio/packages/toolchain-atmelavr/bin",
+            "toolchainBinDir": "C:/Users/Matt/.platformio/packages/toolchain-atmelavr/bin",
             "preLaunchTask": {
                 "type": "PlatformIO",
                 "task": "Pre-Debug"
@@ -25,9 +25,9 @@
             "type": "platformio-debug",
             "request": "launch",
             "name": "PIO Debug (skip Pre-Debug)",
-            "executable": "/home/phantom/Documents/school/Semester 5/CPE 301/code/swampcooler/.pio/build/megaatmega2560/firmware.elf",
+            "executable": "c:/CPE301/CPE301_Swampcooler/.pio/build/megaatmega2560/firmware.elf",
             "projectEnvName": "megaatmega2560",
-            "toolchainBinDir": "/home/phantom/.platformio/packages/toolchain-atmelavr/bin",
+            "toolchainBinDir": "C:/Users/Matt/.platformio/packages/toolchain-atmelavr/bin",
             "internalConsoleOptions": "openOnSessionStart"
         }
     ]

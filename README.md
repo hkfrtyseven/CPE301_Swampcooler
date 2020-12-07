@@ -13,7 +13,7 @@ PB5 - Red LED
 
 PB4 - Yellow LED
 
-PH6 - Blue LED
+PB7 - Blue LED
 
 PF0 - Water Sensor S
 
@@ -37,4 +37,5 @@ PL3 - Fan (on/off pin)
 
 PL5 - Fan GND (always off pin)
 
-PB7 - Servo (vent)
+PH6 - Servo (vent)
+

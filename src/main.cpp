@@ -45,6 +45,8 @@ volatile unsigned char* ddr_l = (unsigned char*) 0x10A;
 // vent positions
 int vent_open = 0;
 int vent_close = 90;
+//int potpin = 2;
+//int servo_val = 0;
 int watersensor_id = 0;
 volatile unsigned int historyValue;
 const int waterThreshold = 200;
@@ -82,8 +84,8 @@ ISR(TIMER3_COMPA_vect)
 
 void setup() {
   // put your setup code here, to run once:
-  *ddr_b |= 0b01111000;
-  *ddr_h |= 0b01000000;
+  *ddr_b |= 0b11110000;
+  //*ddr_h |= 0b01000000;
   *ddr_k &= 0b01111111;
   *port_k |= 0b10000000;
   // set fan pins to output
@@ -91,7 +93,8 @@ void setup() {
   // set fans to LOW
   *port_l &= 0b11010111;
   // initialize servo (vent)
-  // vent_control.attach(13);
+  vent_control.attach(9);
+  vent_control.write(90);
 
   Serial.begin(9600);
   setSyncProvider(requestSync);  //set function to call when time sync required
@@ -115,6 +118,12 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
+
+  //servo_val = adc_read(potpin);                   // reads the value of the potentiometer (value between 0 and 1023)
+  //servo_val = map(servo_val, 0, 1023, 0, 180);    // scale it to use it with the servo (value between 0 and 180)
+  //vent_control.write(servo_val);                  // sets the servo position according to the scaled value
+  //delay(200);                                      // waits for the servo to get there
+
   if(Serial.available()) { processSyncMessage(); }
   if(!(*pin_k & 0b10000000))
   {
@@ -138,30 +147,32 @@ void loop() {
   if(standby)
   {
     *port_b |= 0b00010000; // Turn on yellow LED
-    *port_b &= 0b10011111; // Turn off others
-    *port_h &= 0b10111111;
+    *port_b &= 0b00011111; // Turn off others
+    //*port_h &= 0b10111111;
     if(isFan) { logTime(!isFan);
                 *port_l &= 0b11110111; }  // Turn off fan motor (PL3 to LOW)
     isFan = false;
   //  Turn off motor (PL3 to LOW)
   //  *port_l &= 0b11110111;
   //  'Close' vent
-    vent_control.write(vent_close);
+    vent_control.write(0);
+  //  Serial.println(vent_control.read());
   }
   else
   {
     if(!waterok)
     {
     *port_b |= 0b00100000; // Turn on red LED
-    *port_b &= 0b10111111; // Turn off green LED
-    *port_h &= 0b10111111; // Turn off blue LED
+    *port_b &= 0b00111111; // Turn off green LED and blue LED
+    //*port_h &= 0b10111111; // Turn off blue LED
     if(isFan) { logTime(!isFan);
                 *port_l &= 0b11110111; } // If fan was on, send a log saying it was disabled
                                          // Turn off fan motor (PL3 to LOW)
     isFan = false;
     displayError();
     // 'Close' vent
-    vent_control.write(vent_close);    
+    vent_control.write(0);
+    // Serial.println(vent_control.read());    
     }
     else if(waterok)
     {
@@ -191,13 +202,15 @@ void loop() {
       if(tempabovelevel)
       {
         *port_b &= 0b10111111; // Turn off green LED
-        *port_h |= 0b01000000; // Turn on blue LED
+        *port_b |= 0b10000000; // Turn on blue LED
+        //*port_h |= 0b01000000; // Turn on blue LED
         if(!isFan) { logTime(true); 
                       *port_l |= 0b00001000; } // If the fan was not on, send a log saying it was enabled
                                                // Turn on fan (PL3 to HIGH)
         isFan = true;
         //put vent in 'active' position
-        vent_control.write(vent_open);
+        vent_control.write(180);
+        // Serial.println(vent_control.read());
       }
       else
       {
@@ -207,7 +220,8 @@ void loop() {
                                              // Turn the fan off (PL3 to LOW)
         isFan =  false;
         // Put the vent in 'disabled' or 'inactive' state
-        vent_control.write(vent_close);
+        vent_control.write(0);
+        // Serial.println(vent_control.read());
       }
     }
   }
@@ -252,8 +266,9 @@ void displayClimate()
     lcd.setCursor(0,2);
     lcd.print("Climate");
   }
-  if(DHT.temperature > 0){
-  Serial.print("Temp: "); Serial.println(DHT.temperature); }
+  //Test
+  //if(DHT.temperature > 0){
+  //Serial.print("Temp: "); Serial.println(DHT.temperature); }
 }
 
 void displayError()
